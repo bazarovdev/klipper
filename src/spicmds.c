@@ -85,7 +85,7 @@ spidev_get_cs_pin(struct spidev_s *spi)
 
 void
 spidev_transfer(struct spidev_s *spi, uint8_t receive_data
-                , uint8_t data_len, uint8_t *data)
+                , uint8_t data_len, uint32_t *data)
 {
     uint_fast8_t flags = spi->flags;
     if (!(flags & (SF_SOFTWARE|SF_HARDWARE)))
@@ -115,7 +115,7 @@ command_spi_transfer(uint32_t *args)
     uint8_t oid = args[0];
     struct spidev_s *spi = spidev_oid_lookup(oid);
     uint8_t data_len = args[1];
-    uint8_t *data = command_decode_ptr(args[2]);
+    uint32_t *data = command_decode_ptr(args[2]);
     spidev_transfer(spi, 1, data_len, data);
     sendf("spi_transfer_response oid=%c response=%*s", oid, data_len, data);
 }
@@ -126,7 +126,7 @@ command_spi_send(uint32_t *args)
 {
     struct spidev_s *spi = spidev_oid_lookup(args[0]);
     uint8_t data_len = args[1];
-    uint8_t *data = command_decode_ptr(args[2]);
+    uint32_t *data = command_decode_ptr(args[2]);
     spidev_transfer(spi, 0, data_len, data);
 }
 DECL_COMMAND(command_spi_send, "spi_send oid=%c data=%*s");
@@ -139,7 +139,7 @@ DECL_COMMAND(command_spi_send, "spi_send oid=%c data=%*s");
 struct spidev_shutdown_s {
     struct spidev_s *spi;
     uint8_t shutdown_msg_len;
-    uint8_t shutdown_msg[];
+    uint32_t shutdown_msg[];
 };
 
 void
@@ -151,7 +151,7 @@ command_config_spi_shutdown(uint32_t *args)
         args[0], command_config_spi_shutdown, sizeof(*sd) + shutdown_msg_len);
     sd->spi = spi;
     sd->shutdown_msg_len = shutdown_msg_len;
-    uint8_t *shutdown_msg = command_decode_ptr(args[3]);
+    uint32_t *shutdown_msg = command_decode_ptr(args[3]);
     memcpy(sd->shutdown_msg, shutdown_msg, shutdown_msg_len);
 }
 DECL_COMMAND(command_config_spi_shutdown,

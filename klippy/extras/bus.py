@@ -89,7 +89,7 @@ class MCU_SPI:
     def spi_send(self, data, minclock=0, reqclock=0):
         if self.spi_send_cmd is None:
             # Send setup message via mcu initialization
-            data_msg = "".join(["%02x" % (x,) for x in data])
+            data_msg = "".join(["%08x" % (x,) for x in data])
             self.mcu.add_config_cmd("spi_send oid=%d data=%s" % (
                 self.oid, data_msg), is_init=True)
             return
