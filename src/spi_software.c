@@ -51,13 +51,11 @@ spi_software_transfer(struct spi_software *ss, uint8_t receive_data
     uint16_t num_values = (uint16_t)len * 8 / ss->width;
     uint8_t  extra_bits = (uint16_t)len * 8 % ss->width;
 
-    if (num_values < 1)
-        shutdown("Invalid spi transfer: not enough data for at least 1 value "
-                 "(len*8 < width) len=%d width=%d", len, ss->width);
+    if (num_values < 1) {}
+        shutdown("Invalid spi transfer: not enough data for at least 1 value");
 
     if (extra_bits > 7)
-        shutdown("Invalid spi transfer: unused data at the end "
-                 "(len > required bytes) len=%d width=%d", len, ss->width);
+        shutdown("Invalid spi transfer: unused bytes at the end of data");
 
     while (len--) {
         uint8_t outbuf = *data;
