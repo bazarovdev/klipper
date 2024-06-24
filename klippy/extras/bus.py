@@ -124,12 +124,13 @@ class MCU_SPI:
         encoded_bytes = []
         accumulator = 0  # To accumulate bits
         acc_bits = 0  # Count of bits in the accumulator
+        format_str = '0{}b'.format(self.width)
         if is_lsb_first:
             is_little_endian = not is_little_endian
         for number in data:
             if is_lsb_first:
                 # rotate all bits of the byte msb<->lsb
-                number = int(''.join(reversed(f"{number:0{self.width}b}")), 2)
+                number = int(''.join(reversed(format(number, format_str))), 2)
             if is_little_endian:
                 # Shift the current number into the accumulator from the left
                 accumulator |= number << acc_bits
@@ -163,6 +164,7 @@ class MCU_SPI:
         decoded_data = []
         accumulator = 0
         acc_bits = 0
+        format_str = '0{}b'.format(self.width)
         if is_lsb_first:
             is_little_endian = not is_little_endian
         if is_little_endian:
@@ -192,7 +194,7 @@ class MCU_SPI:
                     accumulator &= (1 << acc_bits) - 1
                 # Apply lsb-first rotation if required
                 if is_lsb_first:
-                    num = int(''.join(reversed(f"{num:0{self.width}b}")), 2)
+                    num = int(''.join(reversed(format(num, format_str))), 2)
                 # Append the decoded number
                 decoded_data.append(num)
         # as byte array may have leftover bits (len*width % 8 != 0),
