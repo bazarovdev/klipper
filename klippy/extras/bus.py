@@ -96,7 +96,8 @@ class MCU_SPI:
             "spi_transfer_response oid=%c response=%*s", oid=self.oid,
             cq=self.cmd_queue)
     def spi_send(self, data, minclock=0, reqclock=0):
-        data_encoded = self.encode(data)
+        data_encoded = self.encode(data, self.is_little_endian,
+                                   self.is_lsb_first)
         if self.spi_send_cmd is None:
             # Send setup message via mcu initialization
             data_msg = "".join(["%02x" % (x,) for x in data_encoded])
@@ -106,17 +107,18 @@ class MCU_SPI:
         self.spi_send_cmd.send([self.oid, data_encoded],
                                minclock=minclock, reqclock=reqclock)
     def spi_transfer(self, data, minclock=0, reqclock=0):
-        data_encoded = self.encode(data)
+        data_encoded = self.encode(data, self.is_little_endian,
+                                   self.is_lsb_first)
         recv = self.spi_transfer_cmd.send([self.oid, data_encoded],
                                           minclock=minclock, reqclock=reqclock)
-        return self.decode(recv)
+        return self.decode(recv, self.is_little_endian, self.is_lsb_first)
 
     def spi_transfer_with_preface(self, preface_data, data,
                                   minclock=0, reqclock=0):
         recv = self.spi_transfer_cmd.send_with_preface(
             self.spi_send_cmd, [self.oid, preface_data], [self.oid, data],
             minclock=minclock, reqclock=reqclock)
-        return self.decode(recv)
+        return self.decode(recv, self.is_little_endian, self.is_lsb_first)
 
     def encode(self, data, is_little_endian=False, is_lsb_first=False):
         if self.width == 8 and not is_lsb_first:
@@ -154,7 +156,7 @@ class MCU_SPI:
                 encoded_bytes.append(byte)
         # Handle any remaining bits by padding them on the right to byte
         if acc_bits > 0:
-            last_byte = accumulator << (8 - acc_bits)
+            last_byte = (accumulator << (8 - acc_bits)) & 0xFF
             encoded_bytes.append(last_byte)
         return encoded_bytes
 

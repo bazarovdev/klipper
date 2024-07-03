@@ -22,8 +22,10 @@ command_spi_set_software_bus(uint32_t *args)
 {
     uint8_t mode = args[4];
     uint8_t width = args[6];
-    if (mode > 3 || width < 1 || width > 32)
+    if (mode > 3 || width < 5 || width > 64) {
+        output("command_spi_set_software_bus width=%c mode=%c", width, mode);
         shutdown("Invalid spi config");
+    }
 
     struct spidev_s *spi = spidev_oid_lookup(args[0]);
     struct spi_software *ss = alloc_chunk(sizeof(*ss));
@@ -51,11 +53,17 @@ spi_software_transfer(struct spi_software *ss, uint8_t receive_data
     uint16_t num_values = (uint16_t)len * 8 / ss->width;
     uint8_t  extra_bits = (uint16_t)len * 8 % ss->width;
 
-    if (num_values < 1) {}
+    if (num_values < 1) {
+        output("spi_software_transfer width=%c len=%c num_values=%hu, " \
+               "extra_bits=%c", ss->width, len, num_values, extra_bits);
         shutdown("Invalid spi transfer: not enough data for at least 1 value");
+    }
 
-    if (extra_bits > 7)
+    if (extra_bits > 7) {
+        output("spi_software_transfer width=%c len=%c num_values=%hu, " \
+               "extra_bits=%c", ss->width, len, num_values, extra_bits);
         shutdown("Invalid spi transfer: unused bytes at the end of data");
+    }
 
     while (len--) {
         uint8_t outbuf = *data;
