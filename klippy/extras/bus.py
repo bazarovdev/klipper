@@ -222,7 +222,7 @@ def MCU_SPI_from_config(config, mode, pin_option="cs_pin",
     mcu = cs_pin_params['chip']
     speed = config.getint('spi_speed', default_speed, minval=100000)
     sw_bus_width = config.getint('spi_software_bus_width', sw_bus_width,
-                                 minval=1, maxval=64)
+                                 minval=5, maxval=64)
     sw_bus_is_little_endian=config.getboolean('spi_software_is_little_endian',
                                               is_little_endian)
     sw_bus_is_lsb_first=config.getboolean('spi_software_is_lsb_first',
