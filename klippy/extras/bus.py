@@ -49,11 +49,13 @@ class MCU_SPI:
         self.width = sw_bus_width
         self.is_little_endian = is_little_endian
         self.is_lsb_first = is_lsb_first
-
-        if self.width < 1 or self.width > 64:
+        # Limit the width to be 5 or more bits to ensure that multiple
+        # transactions can be differentiated from a single transaction.
+        # (e.g. for w=4 and then 1 byte might be 1 transaction and 4 spare bits
+        # or 2 transactions with 4 bits each)
+        if self.width < 5 or self.width > 64:
             raise self.mcu.error("Unsupported spi bus width %d "
-                                 "(should be 1..64)" % (self.width,))
-
+                                 "(should be 5..64)" % (self.width,))
         if pin is None:
             mcu.add_config_cmd("config_spi_without_cs oid=%d" % (self.oid,))
         else:
