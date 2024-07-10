@@ -98,8 +98,7 @@ class MCU_SPI:
             "spi_transfer_response oid=%c response=%*s", oid=self.oid,
             cq=self.cmd_queue)
     def spi_send(self, data, minclock=0, reqclock=0):
-        data_encoded = self.encode(data, self.is_little_endian,
-                                   self.is_lsb_first)
+        data_encoded = self.encode(data)
         if self.spi_send_cmd is None:
             # Send setup message via mcu initialization
             data_msg = "".join(["%02x" % (x,) for x in data_encoded])
@@ -109,33 +108,33 @@ class MCU_SPI:
         self.spi_send_cmd.send([self.oid, data_encoded],
                                minclock=minclock, reqclock=reqclock)
     def spi_transfer(self, data, minclock=0, reqclock=0):
-        data_encoded = self.encode(data, self.is_little_endian,
-                                   self.is_lsb_first)
+        data_encoded = self.encode(data)
         recv = self.spi_transfer_cmd.send([self.oid, data_encoded],
                                           minclock=minclock, reqclock=reqclock)
-        return self.decode(recv, self.is_little_endian, self.is_lsb_first)
+        return self.decode(recv)
 
     def spi_transfer_with_preface(self, preface_data, data,
                                   minclock=0, reqclock=0):
         recv = self.spi_transfer_cmd.send_with_preface(
             self.spi_send_cmd, [self.oid, preface_data], [self.oid, data],
             minclock=minclock, reqclock=reqclock)
-        return self.decode(recv, self.is_little_endian, self.is_lsb_first)
+        return self.decode(recv)
 
-    def encode(self, data, is_little_endian=False, is_lsb_first=False):
-        if self.width == 8 and not is_lsb_first:
+    def encode(self, data):
+        if self.width == 8 and not self.is_lsb_first:
             return data
         encoded_bytes = []
         accumulator = 0  # To accumulate bits
         acc_bits = 0  # Count of bits in the accumulator
         format_str = '0{}b'.format(self.width)
-        if is_lsb_first:
-            is_little_endian = not is_little_endian
+        append_from_left = self.is_little_endian
+        if self.is_lsb_first:
+            append_from_left = not append_from_left
         for number in data:
-            if is_lsb_first:
+            if self.is_lsb_first:
                 # rotate all bits of the byte msb<->lsb
                 number = int(''.join(reversed(format(number, format_str))), 2)
-            if is_little_endian:
+            if append_from_left:
                 # Shift the current number into the accumulator from the left
                 accumulator |= number << acc_bits
             else:
@@ -145,7 +144,7 @@ class MCU_SPI:
             # While we have at least 8 bits, form a byte and append it
             while acc_bits >= 8:
                 acc_bits -= 8  # Decrease bit count by 8
-                if is_little_endian:
+                if append_from_left:
                     # Extract the 8 least significant bits to form a byte
                     byte = accumulator & 0xFF
                     # Remove lsb 8 bits from the accumulator
@@ -162,16 +161,17 @@ class MCU_SPI:
             encoded_bytes.append(last_byte)
         return encoded_bytes
 
-    def decode(self, encoded_data, is_little_endian, is_lsb_first):
-        if self.width == 8 and not is_lsb_first:
+    def decode(self, encoded_data):
+        if self.width == 8 and not self.is_lsb_first:
             return encoded_data
         decoded_data = []
         accumulator = 0
         acc_bits = 0
         format_str = '0{}b'.format(self.width)
-        if is_lsb_first:
-            is_little_endian = not is_little_endian
-        if is_little_endian:
+        append_from_left = self.is_little_endian
+        if self.is_lsb_first:
+            append_from_left = not append_from_left
+        if append_from_left:
             # shift the last byte right if it is not full to simplify decoding
             # as leftovers always stay in the msb side of this byte
             last_byte = encoded_data[-1]
@@ -179,7 +179,7 @@ class MCU_SPI:
             encoded_data[-1] = last_byte >> (8 - left_overs)
         for byte in encoded_data:
             # Adjust byte order based on endianness
-            if is_little_endian:
+            if append_from_left:
                 # Shift the bytes into the accumulator from the left
                 accumulator |= byte << acc_bits
             else:
@@ -190,14 +190,14 @@ class MCU_SPI:
             while acc_bits >= self.width:
                 acc_bits -= self.width
                 num = 0
-                if is_little_endian:
+                if append_from_left:
                     num = accumulator & ((1 << self.width) - 1)
                     accumulator >>= self.width
                 else:
                     num = (accumulator >> acc_bits) & ((1 << self.width) - 1)
                     accumulator &= (1 << acc_bits) - 1
                 # Apply lsb-first rotation if required
-                if is_lsb_first:
+                if self.is_lsb_first:
                     num = int(''.join(reversed(format(num, format_str))), 2)
                 # Append the decoded number
                 decoded_data.append(num)
