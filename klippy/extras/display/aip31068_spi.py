@@ -67,7 +67,7 @@ DISPLAY_INIT_CMNDS= [
     CMND.FUNCTION | flg_FUNCTION.TWO_LINES, # 2-line display mode, 5x8 dots
 ]
 
-class aip31068_spi9bit:
+class aip31068_spi:
     def __init__(self, config):
         self.printer = config.get_printer()
         # spi config

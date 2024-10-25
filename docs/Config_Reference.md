@@ -4081,8 +4081,7 @@ Support for a display attached to the micro-controller.
 [display]
 lcd_type:
 #   The type of LCD chip in use. This may be "hd44780", "hd44780_spi", 
-#   "aip31068_spi9bit", "st7920", "emulated_st7920", "uc1701", "ssd1306", or 
-#   "sh1106".
+#   "aip31068_spi", "st7920", "emulated_st7920", "uc1701", "ssd1306", or #   "sh1106".
 #   See the display sections below for information on each type and
 #   additional parameters they provide. This parameter must be
 #   provided.
@@ -4090,7 +4089,7 @@ lcd_type:
 #   The name of the display_data group to show on the display. This
 #   controls the content of the screen (see the "display_data" section
 #   for more information). The default is _default_20x4 for hd44780 or 
-#   aip31068_spi9bit displays and _default_16x4 for other displays.
+#   aip31068_spi displays and _default_16x4 for other displays.
 #menu_timeout:
 #   Timeout for menu. Being inactive this amount of seconds will
 #   trigger menu exit or return to root menu when having autorun
@@ -4216,16 +4215,16 @@ spi_software_miso_pin:
 ...
 ```
 
-#### aip31068_spi9bit display
+#### aip31068_spi display
 
-Information on configuring an aip31068_spi9bit display - a very similar to 
-hd44780_spi display but uses 9 bit SPI commands
+Information on configuring an aip31068_spi display - a very similar to 
+hd44780_spi display but uses 9 bit SPI commands.
+
+To avoid modifying SW_SPI driver instead sending 9-bit command, 8 commands packed in series and it sums to full 9 bytes without need for exoctic drivers.
 
 ```
 [display]
-lcd_type: aip31068_spi9bit
-spi_software_bus_width: 9 
-#   Modifies SPI bus width to use 9-bits commands
+lcd_type: aip31068_spi
 latch_pin:
 spi_software_sclk_pin:
 spi_software_mosi_pin:
@@ -5022,13 +5021,6 @@ SPI bus.
 #spi_software_sclk_pin:
 #spi_software_mosi_pin:
 #spi_software_miso_pin:
-#spi_software_bus_width: number of bits from `5` to `64` to send/receive per
-#                        transaction on the software SPI bus (default 8 bits).
-#spi_software_is_little_endian: `True`/`False` - if `True` and width above `8`
-#    bits, the least significant byte will be sent first, otherwise last
-#    (default `False`).
-#spi_software_is_lsb_first: `True`/`False` - if `True` then the least
-#    significant bit will be sent first (default `False`).
 #   Specify the above parameters to use "software based SPI". This
 #   mode does not require micro-controller hardware support (typically
 #   any general purpose pins may be used). The default is to not use
