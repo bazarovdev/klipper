@@ -11,7 +11,6 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-from enum import IntEnum, IntFlag
 from .. import bus
 
 LINE_LENGTH_DEFAULT=20
@@ -19,44 +18,51 @@ LINE_LENGTH_OPTIONS={16:16, 20:20}
 
 TextGlyphs = { 'right_arrow': b'\x7e' }
 
-class CMND(IntEnum):
-    CLR = 1         # Clear display
-    HOME = 2        # Return home
-    ENTERY_MODE = 2**2     # Entry mode set
-    DISPLAY = 2**3  # Display on/off control
-    SHIFT = 2**4    # Cursor or display shift
-    FUNCTION = 2**5 # Function set
-    CGRAM = 2**6    # Character Generator RAM
-    DDRAM = 2**7    # Display Data RAM
+# Each command is 9 bits long:
+# 1 bit for RS (Register Select) - 0 for command, 1 for data
+# 8 bits for the command/data
+# Command is a bitwise OR of CMND(=opcode) and flg_CMND(=parameters) multiplied
+# by 1 or 0 as En/Dis flag.
+#     cmd = CMND | flg_CMND.param0*0 | flg_CMND.param1*1
+# or just by OR with enabled flags:
+#     cmd = CMND | flg_CMND.param1
+class CMND:
+    CLR = 1             # Clear display
+    HOME = 2            # Return home
+    ENTERY_MODE = 2**2  # Entry mode set
+    DISPLAY = 2**3      # Display on/off control
+    SHIFT = 2**4        # Cursor or display shift
+    FUNCTION = 2**5     # Function set
+    CGRAM = 2**6        # Character Generator RAM
+    DDRAM = 2**7        # Display Data RAM
     WRITE_RAM = 2**8    # Write to RAM
 
-# Define flags for all commands
-class flg_ENTERY_MODE(IntFlag):
-    INC = 2**1  # Increment
+# Define flags for all commands:
+class flg_ENTERY_MODE:
+    INC = 2**1      # Increment
     SHIFT = 2**0    # Shift display
 
-class flg_DISPLAY(IntFlag):
-    ON = 2**2   # Display ON
-    CURSOR = 2**1  # Cursor ON
-    BLINK = 2**0   # Blink ON
+class flg_DISPLAY:
+    ON = 2**2       # Display ON
+    CURSOR = 2**1   # Cursor ON
+    BLINK = 2**0    # Blink ON
 
-class flg_SHIFT(IntFlag):
-    WHOLE_DISPLAY = 2**3  # Shift whole display
-    RIGHT = 2**2   # Shift right
+class flg_SHIFT:
+    WHOLE_DISPLAY = 2**3    # Shift whole display
+    RIGHT = 2**2            # Shift right
 
-class flg_FUNCTION(IntFlag):
-    TWO_LINES = 2**3    # 2-line display mode
+class flg_FUNCTION:
+    TWO_LINES = 2**3        # 2-line display mode
     FIVE_BY_ELEVEN = 2**2   # 5x11 dot character font
 
-class flg_CGRAM(IntFlag):
+class flg_CGRAM:
     MASK = 0b00111111   # CGRAM address mask
 
-class flg_DDRAM(IntFlag):
+class flg_DDRAM:
     MASK = 0b01111111   # DDRAM address mask
 
-class flg_WRITE_RAM(IntFlag):
+class flg_WRITE_RAM:
     MASK = 0b11111111   # Write RAM mask
-
 
 DISPLAY_INIT_CMNDS= [
     # CMND.CLR - no need as framebuffer will rewrite all
@@ -100,10 +106,43 @@ class aip31068_spi:
             # Glyph framebuffer
             (self.glyph_framebuffer, bytearray(b'~'*64),
                 CMND.CGRAM | (flg_CGRAM.MASK & 0x00) ) ]
+    @staticmethod
+    def encode(data, width = 9):
+        encoded_bytes = []
+        accumulator = 0  # To accumulate bits
+        acc_bits = 0  # Count of bits in the accumulator
+        for num in data:
+            # check that num will fit in width bits
+            if num >= (1 << width):
+                raise ValueError(f"Number {num} does not fit in {width} bits)")
+            # Shift the current number into the accumulator from the right
+            accumulator = (accumulator << width) | num
+            acc_bits += width  # Update the count of bits in the accumulator
+            # While we have at least 8 bits, form a byte and append it
+            while acc_bits >= 8:
+                acc_bits -= 8  # Decrease bit count by 8
+                # Extract the 8 most significant bits to form a byte
+                byte = (accumulator >> acc_bits) & 0xFF
+                # Remove msb 8 bits from the accumulator
+                accumulator &= (1 << acc_bits) - 1
+                encoded_bytes.append(byte)
+        # Handle any remaining bits by padding them on the right to byte
+        if acc_bits > 0:
+            last_byte = accumulator << (8 - acc_bits)
+            encoded_bytes.append(last_byte)
+        return encoded_bytes
     def send(self, data, minclock=0):
-        # for elem in data:
-        #     self.spi.spi_send(elem, minclock)
-        self.spi.spi_send(data, minclock)
+        # different commands have different processing time
+        # to avoid timing violation pad with some fast command, e.g. ENTRY_MODE
+        # that has execution time of 39us (for comparison CLR is 1.53ms)
+        pad = CMND.ENTERY_MODE | flg_ENTERY_MODE.INC
+        for i in range(0, len(data), 8):
+            # Take a slice of 8 numbers
+            group = data[i:i+8]
+            # Pad the group if it has fewer than 8 elements
+            if len(group) < 8:
+                group.extend([pad] * (8 - len(group)))
+            self.spi.spi_send(self.encode(group), minclock)
     def flush(self):
         # Find all differences in the framebuffers and send them to the chip
         for new_data, old_data, fb_cmnd in self.all_framebuffers:
